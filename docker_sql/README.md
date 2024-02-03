@@ -122,3 +122,55 @@ docker run -it \
     --table_name=yellow_taxi_trips \
     --url=${URL}
 ```
+
+### Why we need Docker Compose
+
+https://docs.docker.com/compose/
+
+Previously we have run a -
+
+- In a network
+    - run postgres
+    - run pgAdmin
+
+Instead of having all this messy configuration we can build a `YAML` file that describes all the configuration and connects the two databases with on network.
+
+Docker Compose allows putting configuration of multiple containers in to one file. Instead of  writing all these commands we will just create everything in one fell sweep with Docker Compose. Docker Compose is a convenient way to run multiple related services with just one config file.
+
+Run `docker-compose` if you have installed docker desktop. If not follow the instructions on how to install it.
+
+#### Commands
+
+Run the docker-compose file
+```
+docker-compose up
+```
+
+Run in detached mode:
+
+```
+docker-compose up -d
+```
+Shut down
+
+```
+docker-compose down
+```
+Note: to make pgAdmin configuration persistent, create a folder data_pgadmin. Change its permission via
+
+```
+sudo chown 5050:5050 data_pgadmin
+```
+
+and mount it to the `/var/lib/pgadmin` folder:
+
+```
+services:
+  pgadmin:
+    image: dpage/pgadmin4
+    volumes:
+      - ./data_pgadmin:/var/lib/pgadmin
+    ...
+```
+
+
