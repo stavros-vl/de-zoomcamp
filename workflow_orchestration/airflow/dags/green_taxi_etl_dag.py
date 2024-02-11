@@ -18,21 +18,21 @@ BUCKET = os.environ.get("GCP_GCS_BUCKET")
 
 output_file = "green_tripdata_2021.parquet"
 dataset_url = "https://github.com/DataTalksClub/nyc-tlc-data/releases/download/green/green_tripdata_2020"
+path_to_local_home = os.environ.get("AIRFLOW_HOME", "/opt/airflow/")
 BIGQUERY_DATASET = os.environ.get("BIGQUERY_DATASET", 'trips_data_all')
 
 
-def fetch_data_write_to_parquet(input_url, months, output_file):
+def fetch_data(input_url, months):
     """
     Fetches data from URLs constructed based on input_url and months, loads it into a DataFrame,
-    concatenates the DataFrames, and saves the concatenated DataFrame to Parquet files.
+    concatenates the DataFrames, and returns it.
 
     Parameters:
     input_url (str): Base URL for the data files.
     months (list): List of months to fetch data for.
-    output_file (str): Output file path where the Parquet files will be saved.
 
     Returns:
-    None
+    The csvs concatenated as a single dataframe
     """
     assert isinstance(months, list)
     assert isinstance(input_url, str)
@@ -46,9 +46,7 @@ def fetch_data_write_to_parquet(input_url, months, output_file):
     # Concatenate the DataFrames
     concatenated_df = pd.concat(dfs, ignore_index=True)
     
-    # Save the concatenated DataFrame to Parquet files
-    concatenated_df.to_parquet(output_file)
-
+    return concatenated_df
 
 def transform_df(df):  
     """
@@ -85,6 +83,17 @@ def transform_df(df):
     assert (df['trip_distance'] > 0).all(), "trip_distance contains values less than or equal to 0"
     
     return df
+
+
+def fetch_and_transform_data():
+    # Fetch the data
+    data_df = fetch_data(dataset_url, ['10', '11', '12'])
+
+    # Transform the fetched data
+    transformed_df = transform_df(data_df)
+
+    # Save the transformed DataFrame as a Parquet file
+    transformed_df.to_parquet(f"{path_to_local_home}/{output_file}", index=False)
 
 
 def upload_to_gcs(bucket, object_name, local_file):
@@ -137,9 +146,35 @@ with DAG(
 ) as dag:
 
     # Define the task that executes the load_df function
-    fetch_and_write_to_parquet = PythonOperator(
-        task_id='fetch_data_write_to_parquet',
-        python_callable=fetch_data_write_to_parquet,
-        op_args=[dataset_url, ['10', '11', '12'], output_file],
+    fetch_and_transform_task = PythonOperator(
+        task_id='fetch_and_transform_task',
+        python_callable=fetch_and_transform_data,
         dag=dag
     )
+
+    local_to_gcs_task = PythonOperator(
+        task_id="local_to_gcs_task",
+        python_callable=upload_to_gcs,
+        op_kwargs={
+            "bucket": BUCKET,
+            "object_name": f"raw/{output_file}",
+            "local_file": f"{path_to_local_home}/{output_file}",
+        },
+    )
+
+    bigquery_external_table_task = BigQueryCreateExternalTableOperator(
+        task_id="bigquery_external_table_task",
+        table_resource={
+            "tableReference": {
+                "projectId": PROJECT_ID,
+                "datasetId": BIGQUERY_DATASET,
+                "tableId": "green_taxi_data_2021",
+            },
+            "externalDataConfiguration": {
+                "sourceFormat": "PARQUET",
+                "sourceUris": [f"gs://{BUCKET}/raw/{output_file}"],
+            },
+        },
+    )
+
+    fetch_and_transform_task >> local_to_gcs_task >> bigquery_external_table_task
