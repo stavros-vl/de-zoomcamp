@@ -14,6 +14,7 @@ This script will download the parquet files from the link and load into a bucket
 
 ### SETUP
 Create an external table using the Green Taxi Trip Records Data for 2022.
+
 Create a table in BQ using the Green Taxi Trip Records for 2022 (do not partition or cluster this table).
 
 ### Questions to be answered
