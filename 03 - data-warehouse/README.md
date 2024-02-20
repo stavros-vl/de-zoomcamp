@@ -4,6 +4,13 @@ See: https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/03-dat
 
 The aim here is to get practice with BigQuery and different types of tables as well as performance and cost considerations. Functionalities such as partitioning and clustering will be explored.
 
+## Contents
+
+- **extras:** Folder that contains a sample script that uploads data from a web page containing CSVs to A GCS bucket.
+- **notebooks:** Folder with exploratory notebook.
+- **scripts:** Contains a script that uploads data from a web page containing CSVs to A GCS bucket (similar to the one in extras directory), modified when files are in parquet format.
+- **queries.sql:** File with BigQuery DDL statements & queries that create external and materialized tables and are used to answer the questions below.
+
 ### Note 
 
 For this exercise we will be using the 2022 Green Taxi Trip Record Parquet Files from the New York City Taxi Data found here:
